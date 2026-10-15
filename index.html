@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Akıllı Fiyat Yönetimi · Prototip C</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1b1f24; --sub:#5a6270; --line:#e3e6ec; --accent:#1d39c4; --soft:#eef1fc;
+    --ok:#0e9f6e; --ok-bg:#e6f6ef; --warn:#a85f0a; --warn-bg:#fdf1de; --bad:#d64545; --bad-bg:#fdeaea;
+    box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#101216; --card:#181b21; --ink:#eef0f3; --sub:#a1a8b4; --line:#2a2f38; --accent:#7f98ff; --soft:#1f2640;
+    --ok:#3ccf98; --ok-bg:#12281f; --warn:#f0a94d; --warn-bg:#32250f; --bad:#ff7a7a; --bad-bg:#341919; } }
+  :root[data-theme="dark"]{
+    --bg:#101216; --card:#181b21; --ink:#eef0f3; --sub:#a1a8b4; --line:#2a2f38; --accent:#7f98ff; --soft:#1f2640;
+    --ok:#3ccf98; --ok-bg:#12281f; --warn:#f0a94d; --warn-bg:#32250f; --bad:#ff7a7a; --bad-bg:#341919;
+  }
+  *{box-sizing:border-box;} [hidden]{display:none !important;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:"Segoe UI",-apple-system,Helvetica,Arial,sans-serif; font-size:14.5px;}
+  .wrap{max-width:1400px; margin:0 auto; padding:20px 16px 48px;}
+  .eyebrow{font-size:12px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--accent);}
+  h1{margin:2px 0 12px; font-size:25px;}
+  .stage{background:var(--soft); border:1px solid var(--line); border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:13.5px; line-height:1.5;}
+  .stage b{color:var(--accent);} .lock{display:block; color:var(--sub);}
+  .chips{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:12px; font-size:12.5px; color:var(--sub);}
+  .chip{background:var(--card); border:1px solid var(--line); border-radius:20px; padding:3px 10px; color:var(--ink);}
+  .chip.ok::before{content:"✓ "; color:var(--ok); font-weight:700;}
+  .bar{display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:14px;}
+  .tabs{display:flex; gap:6px;}
+  .tab{font:inherit; font-weight:600; padding:10px 18px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--sub); cursor:pointer;}
+  .tab.on{background:var(--accent); border-color:var(--accent); color:#fff;}
+  input,select{font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink);}
+  input[type=radio],input[type=checkbox]{padding:0; width:auto; accent-color:var(--accent);}
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 18px; margin-bottom:14px;}
+  details.panel > summary{cursor:pointer; font-weight:700; color:var(--ink);}
+  .filters,.row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;}
+  .fl label,label.f span{display:block; font-size:12.5px; color:var(--sub); margin-bottom:4px;}
+  .fl.grow{flex:1; min-width:180px;} .fl.grow input{width:100%;}
+  input.n{width:84px; text-align:right;}
+  .chk{display:flex; align-items:center; gap:6px; font-size:13.5px; padding-bottom:8px;}
+  .tbl{background:var(--card); border:1px solid var(--line); border-radius:14px; overflow-x:auto; margin-bottom:14px;}
+  table{width:100%; border-collapse:collapse; min-width:1100px;}
+  #v2 table{min-width:1240px;}
+  th,td{padding:10px 11px; border-bottom:1px solid var(--line); text-align:right; vertical-align:middle;}
+  th{font-size:12.5px; color:var(--sub); font-weight:600; background:var(--bg);}
+  th:first-child,td:first-child,.st,th.st{text-align:left;}
+  tr:last-child td{border-bottom:none;}
+  small{display:block; color:var(--sub); font-size:12px;}
+  small.w,.fix.w{color:var(--warn);} small.g,.pos{color:var(--ok);} .neg{color:var(--bad);}
+  td input[type=number]{width:92px; text-align:right; border:1.5px solid var(--accent); background:var(--soft);}
+  td input.qi{width:136px;}
+  .badge{display:inline-block; font-size:12px; font-weight:700; border-radius:20px; padding:2px 9px;}
+  .b-ok{background:var(--ok-bg); color:var(--ok);} .b-bad{background:var(--bad-bg); color:var(--bad);}
+  .b-warn{background:var(--warn-bg); color:var(--warn);} .b-n{background:var(--bg); color:var(--sub);}
+  .badge.ok{background:var(--ok-bg); color:var(--ok);} .badge.bad{background:var(--bad-bg); color:var(--bad);}
+  .badge:not(.ok):not(.bad):not([class*=b-]){background:var(--bg); color:var(--sub);}
+  .fix{display:block; font-size:12.5px; color:var(--sub); margin-top:3px;}
+  .fix button,.ap,.lk{background:none; border:none; color:var(--accent); font:inherit; font-weight:700; cursor:pointer; padding:0; text-decoration:underline;}
+  button.upd,button.main,button.sec{font:inherit; font-weight:700; border-radius:8px; padding:8px 14px; cursor:pointer; border:1px solid var(--accent);}
+  button.upd,button.sec{background:var(--card); color:var(--accent);} button.main{background:var(--accent); color:#fff;}
+  button:disabled{opacity:.4; cursor:default;}
+  .rm{background:none; border:none; color:var(--sub); font-size:16px; cursor:pointer;}
+  .empty{text-align:center !important; color:var(--sub); padding:28px !important;}
+  .ai{background:var(--soft);} .ai .rec{font-size:16px; font-weight:800;}
+  .verdict{border-radius:14px; padding:14px 18px; margin-bottom:12px; border:1px solid;}
+  .verdict b{display:block; font-size:18px; margin-bottom:2px;} .verdict span{color:var(--ink);}
+  .verdict.ok{background:var(--ok-bg); color:var(--ok); border-color:var(--ok);}
+  .verdict.hint{background:var(--soft); color:var(--accent); border-color:var(--accent);}
+  .verdict.warn{background:var(--warn-bg); color:var(--warn); border-color:var(--warn);}
+  .sum{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px;}
+  @media (max-width:640px){ .sum{grid-template-columns:1fr;} }
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 16px;}
+  .kpi small{font-size:12.5px;} .kpi b{display:block; font-size:21px; margin:1px 0;}
+  .bulk{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px;}
+  .bulk input{width:70px;}
+  .info48{font-size:13px; color:var(--sub); background:var(--soft); border-radius:10px; padding:8px 12px; margin-bottom:12px;}
+  .scopeh{font-size:12.5px; letter-spacing:.7px; text-transform:uppercase; color:var(--sub); font-weight:600; margin-bottom:8px;}
+  .scope{display:flex; gap:24px; flex-wrap:wrap; margin-bottom:12px;}
+  .radio{display:flex; align-items:center; gap:7px; font-weight:600; cursor:pointer;}
+  .sug{margin-top:8px; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .sug > div{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 12px; border-bottom:1px solid var(--line);}
+  .sug > div:last-child{border-bottom:none;} .sug small{display:inline; margin-left:6px;}
+  .hint2{font-size:12.5px; color:var(--sub); margin-top:10px;}
+  .tchips{display:flex; gap:10px; flex-wrap:wrap;}
+  .tc{display:flex; align-items:center; gap:8px; background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:6px 10px; font-weight:600;}
+  .tc input{width:72px; text-align:right;}
+  .cal{flex:1 0 100%; border-top:1px dashed var(--line); padding-top:12px; margin-top:4px;}
+  .calr{display:grid; grid-template-columns:200px 120px 1fr; gap:10px; align-items:center; padding:5px 0; font-size:13.5px;}
+  .calr .sub{color:var(--sub);}
+  @media (max-width:760px){ .calr{grid-template-columns:1fr; gap:2px; padding:8px 0;} }
+  .detail td{padding:0 !important; background:var(--bg); text-align:left !important;}
+  .dgrid{display:block; padding:14px 16px; text-align:left;}
+  tr.sel td{background:var(--soft);}
+  .legend{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:8px; font-size:12px; color:var(--sub);}
+  .legend .lg{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{display:inline-block; width:14px; height:8px; border-radius:2px;}
+  .drawer{position:fixed; top:0; right:0; bottom:0; width:min(580px,100%); background:var(--bg); border-left:1px solid var(--line); box-shadow:-10px 0 28px rgba(0,0,0,.14); overflow-y:auto; z-index:30; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);}
+  .dh{position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--line); padding:14px 16px; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; z-index:2;}
+  .dh b{font-size:16px;} .dh small{margin-top:2px;}
+  .dsum{display:flex; gap:14px; align-items:center; background:var(--soft); border-radius:12px; padding:10px 14px; margin:14px 16px 0;}
+  .dsum b{display:block; font-size:18px;} .dsum > div:nth-child(2){color:var(--sub); font-size:20px;}
+  .df{position:sticky; bottom:0; background:var(--card); border-top:1px solid var(--line); padding:12px 16px;}
+  .df button{width:100%;}
+  @media (max-width:900px){ .dgrid{grid-template-columns:1fr;} }
+  .dgrid h3{margin:0 0 8px; font-size:12.5px; letter-spacing:.7px; text-transform:uppercase; color:var(--accent);}
+  .box{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px;}
+  .wh{margin:0 0 10px; padding:10px 12px; background:var(--soft); border-radius:10px; line-height:1.5; color:var(--ink);}
+  .wm{display:inline-block; margin-top:6px; font-size:13.5px; color:var(--ink);}
+  .ai-how ol.hw{margin:0; padding-left:0; list-style:none; display:flex; flex-direction:column; gap:8px;} .ai-how .hw li{display:flex; flex-direction:column; gap:1px;} .ai-how .hw li b{color:var(--ink);} .ai-how .hw li span{color:var(--sub); line-height:1.45;} .ai-how small{display:block; margin-top:8px; font-style:italic;}
+  .wl{list-style:none; padding-left:0 !important;} .wl li{display:flex; flex-direction:column; gap:1px; padding:7px 0; border-top:1px solid var(--line); margin:0 !important;} .wl li span{color:var(--sub); line-height:1.45;}
+  .ok-tag{color:var(--ok); font-size:12.5px; font-weight:700;} .lk.aic-off{color:var(--sub); opacity:.55; cursor:not-allowed; text-decoration:none;}
+  .goal .goalh{font-size:12.5px; letter-spacing:.7px; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:8px;}
+  .goalr{display:flex; flex-wrap:wrap; gap:8px 22px; align-items:center;} .goalr .n{margin:0 4px;}
+  .box ul{margin:0; padding-left:18px; line-height:1.5; color:var(--sub);} .box li{margin-bottom:3px;} .box li b{color:var(--ink);}
+  .kv{display:grid; grid-template-columns:150px 1fr; gap:6px 10px; font-size:13.5px;} .kv div:nth-child(odd){color:var(--sub);}
+  .rule{display:flex; justify-content:space-between; gap:8px; font-size:13.5px; padding:4px 0; border-bottom:1px dashed var(--line);} .rule:last-child{border-bottom:none;}
+  .sc{width:100%; min-width:0; font-size:13px;} .sc th,.sc td{padding:6px 8px;}
+  svg{width:100%; height:auto; display:block;}
+  details{font-size:13.5px; color:var(--sub);} summary{cursor:pointer;}
+  details.how{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin-top:14px;}
+  details.how ol.hw{margin:10px 0 0; padding-left:20px; display:flex; flex-direction:column; gap:9px; line-height:1.5;} details.how .hw li b{display:block; color:var(--ink);} details.how .hw li span{color:var(--sub);} details.how .hwn{font-size:13px; font-style:italic; color:var(--sub); margin-top:10px;}
+  details.how summary{color:var(--ink); font-weight:600;} details.how p{margin:8px 0 0; line-height:1.5;}
+  .foot{font-size:12.5px; color:var(--sub); border-left:3px solid var(--accent); padding-left:12px; margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Akıllı Fiyat ve Kampanya Paneli · Prototip C</div>
+  <h1>Fiyat Yönetimi · AI destekli</h1>
+
+  <div class="stage"><b>Aşama 1 · Öneri ve onay.</b> Sistem fiyat önerir, fiyatı sen onaylarsın ("Güncelle" ve "Kampanyayı kaydet" onay adımıdır). Hiçbir fiyat kendiliğinden değişmez.
+    <span class="lock">🔒 Kontrollü otomatik: yöneticiler ekranı düzenli kullanıyor ve kampanyaların çoğu hedef brüt kâr marjına ulaşıyorsa açılır.</span></div>
+  <div class="chips">Kullanılan veriler:
+    <span class="chip ok">Rakip fiyat</span><span class="chip ok">Rakip stok</span><span class="chip ok">Yorum sayısı ve puan</span>
+    <span class="chip ok">Rakip satış adedi</span><span class="chip ok">Kendi satış ve stok</span><span class="chip ok">Fiyat esnekliği (makine öğrenmesi)</span></div>
+
+  <div class="panel goal">
+    <div class="goalh">Öneri hedefi</div>
+    <div class="goalr">
+      <label class="radio"><input type="radio" name="obj" value="profit" checked> Brüt kâr (₺) en yüksek</label>
+      <label class="radio"><input type="radio" name="obj" value="keep"> Marjı koru</label>
+      <span id="tolw" hidden>Marj en fazla <input class="n" type="number" id="r-tol" value="3" min="0" max="20" style="width:64px"> puan düşebilir</span>
+    </div>
+    <div class="hint2" id="goalh2">AI toplam brüt kârı (₺) artırmaya çalışır. Marj düşebilir ama kategori hedefinin altına inmez.</div>
+  </div>
+
+  <details class="panel"><summary>Kurallar ve model ayarları</summary>
+    <div class="row" style="margin-top:12px">
+      <div class="fl"><label for="r-chg">Maks. fiyat değişimi (±%)</label><input class="n" type="number" id="r-chg" value="10" min="1" max="50"></div>
+      <div class="fl"><label for="r-camp">Maks. kampanya indirimi (%)</label><input class="n" type="number" id="r-camp" value="30" min="1" max="80"></div>
+      <div class="fl"><label for="r-st">Stok kritik eşiği (hafta)</label><input class="n" type="number" id="r-st" value="2" min="0"></div>
+      <label class="chk"><input type="checkbox" id="r-rk" checked> Rakibin en düşüğünün altına inme</label>
+    </div>
+    <div class="hint2">Kurallar öneriyi sınırlar; değiştirince öneriler anında yeniden hesaplanır. Minimum brüt kâr marjı, kategori hedefidir ve kampanya ekranında düzenlenir.</div>
+  </details>
+
+  <div class="bar">
+    <div class="tabs"><button class="tab on" data-v="v1">Ürünler</button><button class="tab" data-v="v2">Kampanya Oluştur</button></div>
+  </div>
+
+  <section id="v1">
+    <div class="info48">Fiyat güncellemeleri online kanalda anında, mağaza etiketlerinde 48 saat içinde yansır.</div>
+    <div class="panel filters">
+      <div class="fl grow"><label for="pq">Ürün ara</label><input type="search" id="pq" placeholder="Ürün adı"></div>
+      <div class="fl"><label for="pc">Kategori</label><select id="pc"></select></div>
+      <div class="fl"><label for="pb">Marka</label><select id="pb"></select></div>
+      <label class="chk"><input type="checkbox" id="pw"> Sadece hedefin altındakiler</label>
+    </div>
+    <div class="bulk"><span id="psum"></span><button class="sec" id="pbulk">Yüksek güvenli önerileri uygula ve güncelle</button><span id="pbn" class="pos"></span></div>
+    <div class="tbl"><table>
+      <thead><tr><th>Ürün</th><th>Maliyet</th><th>Rakip fiyatı<br><span style="font-weight:400">en düşük – en yüksek</span></th><th>Stok</th><th>Güncel fiyat</th><th>Önerilen fiyat<br><span style="font-weight:400">AI</span></th><th>Brüt kâr marjı (%)</th><th class="st">Durum</th><th></th></tr></thead>
+      <tbody id="pbody"></tbody>
+    </table></div>
+  </section>
+
+  <section id="v2" hidden>
+    <div class="panel filters">
+      <div class="fl grow"><label for="cn">Kampanya adı</label><input type="text" id="cn" placeholder="Kampanya adı"></div>
+      <div class="fl"><label for="d1">Başlangıç</label><input type="date" id="d1"></div>
+      <div class="fl"><label for="d2">Bitiş</label><input type="date" id="d2"></div>
+      <div class="cal" id="cal"></div>
+    </div>
+    <div class="panel">
+      <div class="scopeh">Kampanya kapsamı</div>
+      <div class="scope">
+        <label class="radio"><input type="radio" name="sc" value="bk" checked> Marka ve/veya kategori</label>
+        <label class="radio"><input type="radio" name="sc" value="up"> Belirli ürünler</label>
+      </div>
+      <div id="sbk" class="filters">
+        <div class="fl"><label for="cc">Kategori</label><select id="cc"></select></div>
+        <div class="fl"><label for="cb">Marka</label><select id="cb"></select></div>
+        <button class="main" id="list">Ürünleri listele</button><span id="hint" class="neg" hidden></span>
+      </div>
+      <div id="sup" hidden>
+        <div class="fl grow"><label for="cq">Ürün ara</label><input type="search" id="cq" placeholder="Ürün adını yazmaya başla"></div>
+        <div id="sug" class="sug"></div>
+      </div>
+      <div class="hint2">Kategori ya da markayı değiştirdiğinde liste yenilenir. İstemediğin ürünleri ✕ ile kampanyadan hariç tutabilirsin.</div>
+    </div>
+    <div class="panel" id="tpanel" hidden>
+      <div class="scopeh">Hedef brüt kâr marjı (%) · kategori bazlı</div>
+      <div class="tchips" id="tchips"></div>
+      <div class="hint2">Kategori planından dolu gelir, istersen değiştirebilirsin.</div>
+    </div>
+    <div id="summary">
+      <div class="verdict" id="verdict"></div>
+      <div class="sum" id="sum"></div>
+      <div class="bulk" id="bulkbar">
+        <span>Hepsine</span><input type="number" id="bd" value="10"><span>% indirim</span><button class="sec" id="bulk">Uygula</button>
+        <button class="sec" id="fixall">Hedefin altındakilere minimum fiyatı uygula</button>
+      </div>
+      <div class="hint2" id="cnote" style="margin:-4px 0 10px"></div>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>Ürün</th><th>Maliyet</th><th>Güncel fiyat</th><th>Rakip fiyatı<br><span style="font-weight:400">en düşük – en yüksek</span></th><th>Önerilen kampanya fiyatı<br><span style="font-weight:400">AI</span></th><th>Kampanya fiyatı</th><th>Planlanan adet</th><th>Brüt kâr marjı (%)</th><th>Brüt kâr (₺)</th><th class="st">Durum</th><th></th></tr></thead>
+      <tbody id="cbody"></tbody>
+    </table></div>
+    <button class="main" id="save">Kampanyayı kaydet</button> <span id="saved" class="pos" hidden></span>
+  </section>
+
+  <div class="foot">Bu prototipte modeller simüle edilir: esneklik, talep trendi ve rakip verileri örnektir. Öneri, sabit esneklikli bir talep modeli ve kuralların içinde brüt kârı en yükselten fiyat olarak hesaplanır. Son karar kullanıcıdadır.</div>
+  <details class="how" open><summary>Nasıl hesaplanıyor? Yapay zekâ ne yapıyor?</summary>
+    <ol class="hw">
+      <li><b>Veri toplanır.</b><span>Rakip fiyatı ve stoğu, ürün yorumları ve puanları, erişilebilir satış göstergeleri ve kendi satış ve stoğumuz tek yerde birleşir. Bu veriyi A adımında topluyoruz.</span></li>
+      <li><b>Fiyat esnekliği öğrenilir (makine öğrenmesi).</b><span>Esneklik, fiyat değişince talebin ne kadar değiştiğini gösterir: <i>%talep değişimi ÷ %fiyat değişimi</i>. Örnek: fiyat %5 düşer, satış %15 artarsa esneklik −3. Model bunu geçmiş fiyat ve satış verisinden ürün bazında öğrenir; kampanya, mevsim ve stok etkisini ayıklar. Yeterli geçmiş yoksa kategori, marka ve benzer ürünlerden tahmin eder ve güveni "düşük" gösterir.</span></li>
+      <li><b>Talep tahmin edilir.</b><span>Temel talep; son 4 haftanın trendi, rakip stoğu ve rakibin satış adedindeki eğilimle düzeltilir. Rakibin satış adedi sitede görünüyorsa doğrudan kullanılır; görünmediği ürünlerde yorum sayısı, puan ve stok hareketlerinden tahmin edilir. Yorum metinleri doğal dil işlemeyle okunur.</span></li>
+      <li><b>Fiyat senaryoları hesaplanır.</b><span>Kuralların izin verdiği her fiyat için tahmini adet, ciro ve brüt kâr çıkarılır. Brüt kâr marjı (%) = (fiyat − maliyet) ÷ fiyat. Brüt kâr (₺) = (fiyat − maliyet) × adet. Kampanyada kampanya etkisi nedeniyle esneklik ×1,25 alınır, adet stokla sınırlanır, süre tarihlerden gelir.</span></li>
+      <li><b>Kurallar sınırlar, öneri çıkar.</b><span>Minimum brüt kâr marjı (kategori hedefi), fiyat değişim sınırı, kampanya indirim sınırı, stok politikası ve rakip kuralı uygulanır. Seçili hedefe göre (brüt kâr ₺ en yüksek ya da marjı koru) en uygun fiyat önerilir.</span></li>
+      <li><b>Karar yöneticide.</b><span>Aşama 1'de sistem yalnızca önerir; fiyat, onayınla uygulanır. Modeller yeterli doğruluğa ulaşınca belirli ürün gruplarında kontrollü otomasyon değerlendirilir.</span></li>
+    </ol>
+    <p class="hwn">Bu prototipte modeller simüle edilir: esneklik, trend ve rakip verileri örnektir. Gerçek sistemde modeller geçmiş fiyat ve satış verisiyle eğitilir. Mağaza etiketleri fiyat değişikliğini 48 saatte yansıtır.</p></details>
+</div>
+<aside class="drawer" id="drawer" hidden aria-label="Fiyat önerisinin gerekçesi">
+  <div class="dh"><div><b id="dt"></b><small id="dsub"></small></div><button class="rm" id="dclose" aria-label="Kapat">✕</button></div>
+  <div id="dbody"></div>
+  <div class="df"><button class="main" id="dapply">Öneriyi uygula</button></div>
+</aside>
+<script>
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString('tr-TR'), TL = n => fmt(n) + ' ₺';
+  const pct = (n, d = 1) => '%' + (n * 100).toLocaleString('tr-TR', {maximumFractionDigits: d});
+  const sg = n => (n >= 0 ? '+' : '−') + fmt(Math.abs(n)) + ' ₺';
+  const H48 = 48 * 36e5;
+  const fD = d => d.toLocaleDateString('tr-TR', {day: 'numeric', month: 'long'});
+  const fDT = d => d.toLocaleString('tr-TR', {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'});
+  // id, ad, kategori, marka, maliyet, güncel fiyat, rakip min, rakip max, stok, haftalık satış, esneklik, güven, kaynak, talep trendi %, rakip stok, rakip satış (tahmin/hf), rakip eğilim %, yorum değişimi %, puan
+  const P = [
+    [1,'Çizgili Defter 96 Yaprak','Kırtasiye','Notia',48,80,59,72,12400,900,-3.2,'Yüksek','Ürün bazlı model',6,'Stokta',1100,9,12,4.6],
+    [2,'Kareli Defter 80 Yaprak','Kırtasiye','Notia',42,70,55,68,8900,700,-2.6,'Yüksek','Ürün bazlı model',3,'Stokta',850,4,5,4.5],
+    [3,'Kurşun Kalem Seti 12 Adet','Kırtasiye','Yazı',52,70,65,79,5200,500,-1.4,'Orta','Ürün bazlı model',0,'Stokta',620,0,2,4.4],
+    [4,'Jel Kalem 10 Renk','Kırtasiye','Yazı',88,150,112,135,3100,300,-2.1,'Orta','Ürün bazlı model',-4,'Stokta',380,-3,-1,4.2],
+    [5,'Fosforlu Kalem 6 Renk','Kırtasiye','Yazı',60,80,85,99,420,350,-1.8,'Düşük','Kategori bazlı tahmin',15,'Az',500,18,20,4.3],
+    [6,'Okul Çantası Klasik','Kırtasiye','Okul Pro',310,590,520,640,640,40,-2.4,'Orta','Ürün bazlı model',-8,'Stokta',55,-6,-4,4.1],
+    [7,'Pergel Seti','Kırtasiye','Okul Pro',36,49,49,62,0,200,-2.0,'Yüksek','Ürün bazlı model',2,'Stokta',240,3,1,4.4],
+    [8,'Silgi ve Kalemtraş Seti','Kırtasiye','Notia',14,29,22,31,15000,2000,-3.8,'Yüksek','Ürün bazlı model',2,'Stokta',2300,5,3,4.7],
+    [9,'LGS Deneme Seti','Kitap','Bilge Yayın',205,270,265,310,2300,150,-1.6,'Orta','Ürün bazlı model',20,'Az',210,14,25,4.6],
+    [10,'Resimli Hikâye Kitabı','Kitap','Mavi Kitap',70,120,89,109,4800,250,-2.9,'Yüksek','Ürün bazlı model',1,'Stokta',300,2,6,4.8],
+    [11,'Klasik Roman Seti 5 Kitap','Kitap','Mavi Kitap',150,260,215,245,1150,90,-2.2,'Düşük','Kategori bazlı tahmin',0,'Stokta',110,1,2,4.5],
+    [12,'Yaz Tatili Çalışma Kitabı','Kitap','Bilge Yayın',55,95,72,88,6700,400,-3.4,'Yüksek','Ürün bazlı model',-12,'Stokta',450,-10,-8,4.3],
+    [13,'Klasik Rock Vinil Plak','Müzik','Plakçı',420,640,560,690,320,60,-1.5,'Orta','Ürün bazlı model',3,'Stokta',75,2,4,4.7],
+    [14,'Akustik Gitar Tel Seti','Müzik','Tınlı',95,170,140,185,1800,220,-2.3,'Yüksek','Ürün bazlı model',1,'Stokta',260,3,5,4.4],
+    [15,'Klasik Film Koleksiyonu Blu-ray','Film','Gösterim',210,330,285,360,540,45,-1.9,'Orta','Ürün bazlı model',-2,'Stokta',50,-2,0,4.6],
+    [16,'Aile Filmleri DVD Seti','Film','Gösterim',90,160,130,175,2100,160,-2.8,'Yüksek','Ürün bazlı model',-5,'Stokta',190,-4,-3,4.2],
+    [17,'Strateji Masa Oyunu','Oyun','Oyun Atölyesi',340,480,450,590,760,80,-1.7,'Orta','Ürün bazlı model',8,'Az',120,10,15,4.8],
+    [18,'Konsol Oyunu Aksiyon','Oyun','Piksel',780,1050,990,1250,430,70,-2.6,'Yüksek','Ürün bazlı model',4,'Stokta',95,3,6,4.5],
+    [19,'Boyama Seti 24 Renk','Hobi','Renkli Atölye',110,190,160,205,3400,350,-2.4,'Yüksek','Ürün bazlı model',5,'Stokta',420,6,8,4.6],
+    [20,'Puzzle 1000 Parça','Hobi','Renkli Atölye',130,230,190,250,950,120,-1.3,'Düşük','Kategori bazlı tahmin',10,'Stokta',140,8,11,4.7],
+    [21,'Kablosuz Kulaklık','Teknoloji Aksesuarı','Sesli',420,590,590,740,1250,140,-2.7,'Yüksek','Ürün bazlı model',3,'Stokta',200,5,9,4.3],
+    [22,'Telefon Kılıfı Şeffaf','Teknoloji Aksesuarı','Sesli',35,85,60,95,7800,900,-3.5,'Yüksek','Ürün bazlı model',0,'Stokta',1100,1,2,4.1],
+    [23,'Hızlı Şarj Kablosu 1 m','Teknoloji Aksesuarı','Voltix',45,110,89,125,5600,600,-2.0,'Orta','Ürün bazlı model',-3,'Stokta',700,-2,-1,4.4],
+    [24,'Konser Bileti Kategori A','Etkinlik Bileti','Sahne Bilet',650,980,880,1050,280,60,-1.1,'Düşük','Kategori bazlı tahmin',25,'Az',90,20,30,4.8],
+    [25,'Tiyatro Bileti Orta Blok','Etkinlik Bileti','Sahne Bilet',210,360,320,390,420,70,-1.6,'Orta','Ürün bazlı model',6,'Stokta',80,5,7,4.6]
+  ].map(a => ({id:a[0], n:a[1], k:a[2], b:a[3], c:a[4], p:a[5], rmin:a[6], rmax:a[7], s:a[8], q:a[9], e:a[10], conf:a[11], src:a[12], tr:a[13], rs:a[14], rq:a[15], rt:a[16], yc:a[17], pu:a[18]}));
+  const find = tr => P.find(x => x.id == tr.dataset.id);
+  const TARGETS = {'Kitap':28,'Müzik':32,'Film':30,'Oyun':25,'Hobi':38,'Kırtasiye':30,'Teknoloji Aksesuarı':40,'Etkinlik Bileti':30};
+  const tgt = k => (TARGETS[k] || 0) / 100, minP = (c, k) => Math.ceil(c / (1 - tgt(k)));
+  const CATS = ['Kitap','Müzik','Film','Oyun','Hobi','Kırtasiye','Teknoloji Aksesuarı','Etkinlik Bileti'];
+  const rk = (p, v) => { const n = v < p.rmin ? ['Rakibin en düşüğünün altında','w'] : v > p.rmax ? ['En yüksek rakipten pahalı','w'] : ['Rakip aralığında','g'];
+    return `${TL(p.rmin)} – ${TL(p.rmax)}<small class="${n[1]}">${n[0]}</small>`; };
+  const stk = p => p.s === 0 ? '<span class="badge b-bad">Tükendi</span>' : p.s < 500 ? `${fmt(p.s)}<small class="w">Düşük stok</small>` : fmt(p.s);
+  const state = (m, c, k) => m >= tgt(k) ? '<span class="badge ok">✓ Hedefte</span>' : `<span class="badge bad">Hedefin altında</span><span class="fix">En az ${TL(minP(c, k))} · <button class="ap" data-p="${minP(c, k)}">Uygula</button></span>`;
+  const confCls = c => c === 'Yüksek' ? 'b-ok' : c === 'Orta' ? 'b-warn' : 'b-bad';
+  function fillBrands(id, cat){ const b = [...new Set(P.filter(p => !cat || p.k === cat).map(p => p.b))];
+    $(id).innerHTML = '<option value="">Tüm markalar</option>' + b.map(x => `<option>${x}</option>`).join(''); }
+  $('pc').innerHTML = '<option value="">Tüm kategoriler</option>' + CATS.map(c => `<option>${c}</option>`).join('');
+  $('cc').innerHTML = '<option value="">Seçilmedi</option>' + CATS.map(c => `<option>${c}</option>`).join('');
+  fillBrands('pb', ''); fillBrands('cb', '');
+
+  /* ================= MODEL ================= */
+  const R = {chg: () => (+$('r-chg').value || 0) / 100, camp: () => (+$('r-camp').value || 0) / 100, st: () => +$('r-st').value || 0, rk: () => $('r-rk').checked, keep: () => document.querySelector('input[name=obj]:checked').value === 'keep', tol: () => (+$('r-tol').value || 0) / 100};
+  const stokB = p => p.rs === 'Az' ? .08 : p.rs === 'Yok' ? .15 : 0;
+  const dfac = p => (1 + p.tr / 100) * (1 + stokB(p)) * (1 - .3 * p.rt / 100);
+  const wkCover = p => p.s / (p.q * dfac(p));
+  function weeksOf(){
+    const a = $('d1').value, b = $('d2').value; if (!a || !b) return null;
+    const d = (new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 864e5 + 1; return d > 0 ? d / 7 : null;
+  }
+  const campW = () => weeksOf() || 1;
+  function M(p, mode, W){
+    const em = mode === 'camp' ? p.e * 1.25 : p.e, w = mode === 'camp' ? W : 1, cap = mode === 'camp' ? p.s : Infinity;
+    const raw = x => p.q * dfac(p) * Math.pow(x / p.p, em) * w, qty = x => Math.min(cap, raw(x));
+    return {em, w, raw, qty, profit: x => qty(x) * (x - p.c)};
+  }
+  function bounds(p, mode){
+    const t0 = tgt(p.k), m0 = (p.p - p.c) / p.p, t = R.keep() ? Math.max(t0, m0 - R.tol()) : t0, crit = wkCover(p) < R.st();
+    const lo = [['min', p.c / (1 - t)], ['rk', R.rk() ? .97 * p.rmin : 0]], hi = [];
+    if (mode === 'camp'){ lo.push(['camp', p.p * (1 - R.camp())]); hi.push(['top', p.p]); }
+    else { lo.push(['chg', p.p * (1 - R.chg())]); if (crit) lo.push(['stok', p.p]); hi.push(['chg', p.p * (1 + R.chg())], ['rk', 1.05 * p.rmax]); }
+    const l = lo.reduce((a, b) => b[1] > a[1] ? b : a), h = hi.reduce((a, b) => b[1] < a[1] ? b : a);
+    return {lo: l[1], loKey: l[0], hi: h[1], hiKey: h[0], crit, t, t0, keep: R.keep()};
+  }
+  function recommend(p, mode, W){
+    if (p.s === 0) return {none: 'Stok yok'};
+    const b = bounds(p, mode);
+    if (mode === 'camp' && b.lo > p.p) return {none: 'Güncel fiyat hedefin altında, önce fiyatı güncelle'};
+    let lo = Math.ceil(b.lo), hi = Math.floor(b.hi), conflict = false;
+    if (lo > hi){ hi = lo; conflict = true; }
+    const m = M(p, mode, W); let best = lo, bp = -Infinity;
+    for (let x = lo; x <= hi; x++){ const v = m.profit(x); if (v > bp){ bp = v; best = x; } }
+    const noDisc = mode === 'camp' && best >= p.p;
+    if (noDisc) best = Math.floor(p.p);
+    const bind = best <= lo ? b.loKey : best >= hi ? b.hiKey : null;
+    return {price: best, b, bind, conflict, noDisc, m, delta: m.profit(best) - m.profit(p.p), qty: m.qty(best), capped: m.raw(best) > p.s};
+  }
+  const ruleName = {chg:'Maksimum değişim sınırı', min:'Minimum brüt kâr marjı', rk:'Rakibin en düşüğünün altına inmeme', camp:'Maksimum kampanya indirimi', top:'İndirim üst sınırı', stok:'Stok politikası'};
+
+  const nf1 = v => v.toLocaleString('tr-TR', {maximumFractionDigits: 1});
+  const bindTxt = (k, r, p) => ({
+    chg: `Tek seferde en fazla ±%${Math.round(R.chg() * 100)} değişebilir. Hedef fiyata kademeli yaklaşılıyor.`,
+    min: r.b.keep && r.b.t > r.b.t0 ? `"Marjı koru" seçili: marj en fazla ${Math.round(R.tol() * 100)} puan düşebilir (taban %${Math.round(r.b.t * 100)}). Daha düşük fiyat bu tabanın altına iner.` : `Minimum brüt kâr marjı (%${Math.round(r.b.t * 100)}) korunuyor. Daha düşük fiyat bu marjın altına iner.`,
+    rk: r.price <= r.b.lo + 1 ? 'Rakibin en düşük fiyatının altına inilmiyor.' : 'Rakibin en yüksek fiyatının %5 üzerine çıkılmıyor.',
+    camp: `Kampanya indirimi en fazla %${Math.round(R.camp() * 100)} olabilir.`,
+    top: 'Kampanya fiyatı güncel fiyatın üstüne çıkamaz.',
+    stok: 'Stok kritik seviyede olduğu için indirim yapılmıyor.'})[k];
+  const conf = {lo: {min: 'minimum marj tabanı', chg: 'adım sınırı', rk: 'rakibin en düşüğünün altına inmeme kuralı', camp: 'maksimum indirim sınırı', stok: 'stok politikası'},
+    hi: {chg: 'adım sınırı', rk: 'rakibin en yüksek fiyatının %5 üstüne çıkmama kuralı', top: 'indirim üst sınırı'}};
+  function whyHead(p, r, mode){
+    const c = r.price / p.p - 1, per = mode === 'camp' ? 'kampanya boyunca' : 'haftalık';
+    if (r.noDisc) return `<b>İndirim önermiyoruz.</b> Bu üründe indirim brüt kârı artırmıyor; mevcut fiyatı korumak daha kazançlı.`;
+    const dir = Math.abs(c) < .005 ? 'Fiyatı korumanı öneriyoruz' : c < 0 ? `Fiyatı %${Math.round(-c * 100)} düşürmeni öneriyoruz` : `Fiyatı %${Math.round(c * 100)} artırmanı öneriyoruz`;
+    const cause = c < -.005 ? 'Talep fiyata duyarlı olduğu için satış artışı, birim kâr kaybını geri kazandırıyor.'
+      : c > .005 ? 'Talep fiyata az duyarlı olduğu için satış çok düşmeden birim kâr artıyor.' : 'Mevcut fiyat bu koşullarda en yüksek brüt kârı veriyor.';
+    const m0 = (p.p - p.c) / p.p, m1 = (r.price - p.c) / r.price, q0 = r.m.qty(p.p), q1 = r.m.qty(r.price), u = mode === 'camp' ? 'kampanya boyunca' : 'haftalık';
+    return `<b>${dir}: ${TL(p.p)} → ${TL(r.price)}.</b> ${cause}<br><span class="wm">Marj ${pct(m0)} → ${pct(m1)} · Adet ${fmt(q0)} → ${fmt(q1)} (${u}) · Brüt kâr <b class="${r.delta >= 0 ? 'pos' : 'neg'}">${sg(r.delta)}</b></span>`;
+  }
+  function why(p, r, mode, W){
+    const m = r.m, d5 = (Math.pow(.95, m.em) - 1) * 100, L = [], item = (t, x) => L.push(`<b>${t}</b><span>${x}</span>`);
+    item('Talep fiyata ne kadar duyarlı?', `Fiyat %5 düşerse satış yaklaşık %${d5.toFixed(0)} artıyor${mode === 'camp' ? ' (kampanya etkisi dahil)' : ''}. Güven: ${p.conf}.`);
+    const tq = p.q * dfac(p);
+    item('Satışlar nereye gidiyor?', `Son 4 haftada ${Math.abs(p.tr) < 5 ? 'satış sabit' : 'satış ' + (p.tr > 0 ? 'arttı' : 'azaldı') + ' (' + (p.tr > 0 ? '+' : '') + '%' + p.tr + ')'}. Tahmini talep: ${fmt(tq)} adet/hf.`);
+    { const wk = wkCover(p), crit = wk < R.st(), lowTxt = wk < 1.5 ? 'yaklaşık 1 hafta' : 'yaklaşık ' + Math.round(wk) + ' hafta';
+      item('Stok yeterli mi?', `Stok ${fmt(p.s)} adet, ${lowTxt}lık talebe yetiyor. ` + (crit ? (mode === 'price' ? `Eşik (${R.st()} hafta) altında olduğu için <b>indirim önerilmedi</b>, fiyat düşürülmüyor.` : `Eşik (${R.st()} hafta) altında: stok hızla tükenebilir, kampanya adedi stokla sınırlı.`) : (mode === 'camp' && r.capped ? 'Kampanya talebi stoğu aşıyor, satış stokla sınırlı.' : 'Stok seviyesi önerinin önünde engel değil.'))); }
+    item('Rakip ne yapıyor?', `Rakip fiyatı ${TL(p.rmin)} – ${TL(p.rmax)}. Rakip stok: ${p.rs.toLowerCase()}${p.rs !== 'Stokta' ? ' (talep bize kayabilir)' : ''}. Rakibin satışı haftada ~${fmt(p.rq)} adet ve ${p.rt >= 0 ? '+' : ''}%${p.rt} eğilimde${p.rt > 0 ? ': rakip satışı arttığı için talep tahminimiz −%' + nf1(.3 * p.rt) + ' düzeltildi' : p.rt < 0 ? ': rakip satışı azaldığı için talep tahminimiz +%' + nf1(-.3 * p.rt) + ' düzeltildi' : ''}.`);
+    if (mode === 'camp'){
+      item('Planlanan adet nasıl bulundu?', r.capped ? `Bu fiyatta talep (${fmt(p.s)} adetten fazla) stoğu aşıyor. Adet stokla sınırlandı: ${fmt(Math.round(r.qty))}.` : `Bu fiyatta ${nf1(W)} haftada ~${fmt(Math.round(r.qty))} adet satılması bekleniyor (stok ${fmt(p.s)}).`);
+    }
+    if (!r.noDisc){
+      item('Neden daha da ileri gitmedik?', r.conflict ? `Kural çakışması: ${conf.lo[r.b.loKey]} ile ${conf.hi[r.b.hiKey]} birlikte sağlanamıyor. En düşük uygun fiyat önerildi, kararı sen ver.`
+        : r.bind ? bindTxt(r.bind, r, p) : 'Hiçbir kural sınırlamadı. Öneri, kurallar içindeki en yüksek brüt kâr noktası.');
+    }
+    if (mode === 'price' && p.p < p.rmin) item('Not', 'Güncel fiyat rakibin en düşüğünün altındaydı, kısmen yukarı çekildi.');
+    if (mode === 'price' && p.p > 1.05 * p.rmax) item('Not', 'Güncel fiyat rakip aralığının üstündeydi, kısmen aşağı çekildi.');
+    if (r.delta < 0 && !r.noDisc) item('Dikkat', 'Kurallara uymak için brüt kâr bir miktar azalıyor. Bunu bilerek onaylamalısın.');
+    if (p.conf === 'Düşük') item('Dikkat', 'Yeterli fiyat geçmişi yok, kategori ortalaması kullanıldı. Yalnızca elle onayla.');
+    return L;
+  }
+  function aiHow(p, r, mode){
+    const m = r.m, tq = p.q * dfac(p), u = (v) => v.toLocaleString('tr-TR', {maximumFractionDigits: 1}), L = [];
+    const it = (t, x) => L.push(`<li><b>${t}</b><span>${x}</span></li>`);
+    it('1. Esnekliği öğrendi (makine öğrenmesi)', `${p.src === 'Ürün bazlı model' ? 'Bu ürünün geçmiş fiyat ve satış verisinden' : 'Yeterli geçmiş olmadığı için kategori ve benzer ürünlerden'} esneklik tahmin edildi: <b>${u(m.em).replace('-', '−')}</b> (güven: ${p.conf}). Yani fiyat %1 düşerse satış yaklaşık %${u(Math.abs(m.em))} artıyor${mode === 'camp' ? '; kampanya etkisi dahil' : ''}.`);
+    it('2. Talebi tahmin etti', `Temel talep ${fmt(p.q)}/hf. Son 4 haftanın trendi (${p.tr >= 0 ? '+' : ''}%${p.tr}), rakip stoğu (${p.rs.toLowerCase()}) ve rakip eğilimiyle düzeltilince <b>${fmt(tq)}/hf</b>.`);
+    it('3. Stoğu kontrol etti', `Stok ${fmt(p.s)} adet, tahmini talebe göre <b>${nf1(wkCover(p))} hafta</b> yetiyor. ${wkCover(p) < R.st() ? (mode === 'price' ? 'Eşiğin altında olduğu için indirim önerisi kapalı.' : 'Eşiğin altında, kampanya adedi stokla sınırlandı.') : 'Stok kritik değil.'}${mode === 'camp' ? ' Kampanya adedi stoğu aşamaz.' : ''}`);
+    it('4. Rakibin satışını okudu', `Rakibin satış adedi sitede görünüyor: <b>~${fmt(p.rq)}/hf</b>, eğilim ${p.rt >= 0 ? '+' : ''}%${p.rt}. ${p.rt > 0 ? 'Rakip satışı arttıkça payımız azalır, talep tahminine −%' + nf1(.3 * p.rt) + ' yansıdı.' : p.rt < 0 ? 'Rakip satışı azaldıkça talep bize kayar, tahmine +%' + nf1(-.3 * p.rt) + ' yansıdı.' : 'Eğilim yatay, talep tahmini değişmedi.'} Yorum sayısı (30 günde ${p.yc >= 0 ? '+' : ''}%${p.yc}) ve puan (${p.pu.toLocaleString('tr-TR')}) ek sinyal olarak kullanıldı.`);
+    it('5. Fiyat senaryolarını denedi', `Kuralların izin verdiği ${TL(Math.ceil(r.b.lo))} – ${TL(Math.floor(Math.max(r.b.hi, r.b.lo)))} aralığındaki her fiyat için adet, ciro ve brüt kâr hesaplandı. ${R.keep() ? 'Marjı koruma tercihinle' : 'Brüt kârı (₺) en yükseğe çıkaran'} fiyat seçildi: <b>${TL(r.price)}</b>.`);
+    return L.join('');
+  }
+  function chartSvg(p, r){
+    const W = 560, H = 216, P0 = 34, B = 50, xs = [], ys = [], m = r.m;
+    const a = Math.min(p.p, r.price, p.rmin) * .88, z = Math.max(p.p, r.price, p.rmax) * 1.08;
+    for (let i = 0; i <= 60; i++){ const x = a + (z - a) * i / 60; xs.push(x); ys.push(m.profit(x)); }
+    const lo = Math.min(...ys), hi = Math.max(...ys), X = v => P0 + (v - a) / (z - a) * (W - P0 - 8), Y = v => H - B - (v - lo) / (hi - lo || 1) * (H - B - 30);
+    const path = xs.map((x, i) => (i ? 'L' : 'M') + X(x).toFixed(1) + ' ' + Y(ys[i]).toFixed(1)).join(' ');
+    const bl = Math.max(a, r.b.lo), bh = Math.min(z, r.b.hi), left = p.p <= r.price;
+    const lab = 'Önerilen ' + fmt(r.price) + ' ₺', pw = lab.length * 6.6 + 18, xr = X(r.price);
+    let px = left ? xr + 4 : xr - 4 - pw; px = Math.max(2, Math.min(W - pw - 2, px));
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Fiyata göre brüt kâr grafiği">
+      <rect x="${X(bl)}" y="${H - 38}" width="${Math.max(2, X(bh) - X(bl))}" height="6" rx="3" fill="var(--accent)" opacity=".55"/>
+      <rect x="${X(Math.max(a, p.rmin))}" y="${H - 28}" width="${Math.max(2, X(Math.min(z, p.rmax)) - X(Math.max(a, p.rmin)))}" height="6" rx="3" fill="var(--warn)" opacity=".6"/>
+      <path d="${path}" fill="none" stroke="var(--sub)" stroke-width="2.5"/>
+      <line x1="${X(p.p)}" x2="${X(p.p)}" y1="22" y2="${H - B}" stroke="var(--sub)" stroke-dasharray="3 3"/>
+      <line x1="${xr}" x2="${xr}" y1="22" y2="${H - B}" stroke="var(--accent)" stroke-width="2"/>
+      <circle cx="${xr}" cy="${Y(m.profit(r.price))}" r="5.5" fill="var(--accent)" stroke="#fff" stroke-width="1.5"/>
+      <text x="${X(p.p) + (left ? -4 : 4)}" y="15" text-anchor="${left ? 'end' : 'start'}" font-size="11" fill="var(--sub)">Güncel ${fmt(p.p)} ₺</text>
+      <rect x="${px}" y="2" width="${pw}" height="20" rx="10" fill="var(--accent)"/>
+      <text x="${px + pw / 2}" y="16" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">${lab}</text>
+      <text x="${P0}" y="${H - 6}" font-size="11" fill="var(--sub)">${fmt(a)} ₺</text><text x="${W - 8}" y="${H - 6}" text-anchor="end" font-size="11" fill="var(--sub)">${fmt(z)} ₺</text></svg>`;
+  }
+  function detailHtml(p, mode, r){
+    const W = campW(), m = r.m, t = r.b.t, lbl = mode === 'camp' ? `kampanya toplamı (${W.toLocaleString('tr-TR', {maximumFractionDigits: 1})} hf)` : 'haftalık';
+    const names = mode === 'camp' ? [['İndirimsiz (güncel fiyat)', p.p], ['Önerilen', r.price], ['Rakibin en düşüğüne eşitle', p.rmin]] : [['Güncel fiyat', p.p], ['Önerilen', r.price], ['Rakibin en düşüğüne eşitle', p.rmin]];
+    const rows = names.map(([n, x]) => {
+      const q = m.qty(x), v = [];
+      if ((x - p.c) / x < t) v.push('hedef marjın altında');
+      if (mode === 'price' && Math.abs(x / p.p - 1) > R.chg() + 1e-9) v.push(`tek adımda ±%${Math.round(R.chg() * 100)} sınırını aşıyor`);
+      if (mode === 'camp' && x < p.p * (1 - R.camp()) - 1e-9) v.push(`%${Math.round(R.camp() * 100)} indirim sınırını aşıyor`);
+      if (mode === 'price' && r.b.crit && x < p.p) v.push('kritik stokta indirim');
+      return `<tr><td style="text-align:left">${n}<small>${TL(x)}${v.length ? ' · <span class="neg">kural dışı: ' + v.join(', ') + '</span>' : ''}</small></td><td>${fmt(q)}</td><td>${TL(q * x)}</td><td><b>${TL(q * (x - p.c))}</b></td><td>${pct((x - p.c) / x)}</td></tr>`; }).join('');
+    const x = r.price, rule = (n, ok, txt, k) => `<div class="rule"><span>${n}${r.bind === k ? ' <span class="badge b-warn">bağlayıcı</span>' : ''}</span><span class="${ok ? 'pos' : 'neg'}">${ok ? '✓' : '✗'} ${txt}</span></div>`;
+    const dem = dfac(p), w = wkCover(p);
+    const rulesHtml = rule('Minimum brüt kâr marjı ' + pct(t, 0), (x - p.c) / x >= t, pct((x - p.c) / x), 'min')
+      + (mode === 'camp' ? rule('Maksimum kampanya indirimi %' + Math.round(R.camp() * 100), x >= p.p * (1 - R.camp()) - 1e-9, '−' + pct(Math.max(0, 1 - x / p.p)), 'camp')
+         + rule('Talep stokla sınırlı', true, r.capped ? 'evet, stok yetmiyor' : 'stok yeterli', 'top')
+         : rule('Maksimum değişim ±%' + Math.round(R.chg() * 100), Math.abs(x / p.p - 1) <= R.chg() + 1e-9, (x >= p.p ? '+' : '−') + pct(Math.abs(x / p.p - 1)), 'chg')
+         + rule('Stok politikası', !r.b.crit || x >= p.p, r.b.crit ? 'stok kritik, indirim yok' : 'stok yeterli', 'stok'))
+      + rule('Rakibin en düşüğünün altına inmeme', !R.rk() || x >= .97 * p.rmin, R.rk() ? 'uygulanıyor' : 'kapalı', 'rk');
+    return `<div class="dgrid"><div>
+        <div class="box"><h3>Neden bu fiyat?</h3><p class="wh">${whyHead(p, r, mode)}</p><ul class="wl">${why(p, r, mode, W).map(l => `<li>${l}</li>`).join('')}</ul></div>
+        <div class="box ai-how"><h3>Yapay zekâ bu öneriyi nasıl üretti?</h3><ol class="hw">${aiHow(p, r, mode)}</ol><small>Prototipte bu değerler örnektir. Gerçek sistemde modeller geçmiş fiyat ve satış verisiyle eğitilir.</small></div>
+        <div class="box"><h3>Fiyata göre brüt kâr (${lbl})</h3>${chartSvg(p, r)}<div class="legend"><span class="lg"><i style="background:var(--accent);border-radius:9px;width:22px"></i>Önerilen fiyat</span><span class="lg"><i style="background:var(--accent);opacity:.55"></i>İzin verilen fiyat aralığı</span><span class="lg"><i style="background:var(--warn);opacity:.6"></i>Rakip fiyat aralığı</span></div></div>
+        <div class="box"><h3>Senaryo karşılaştırması (${lbl})</h3><table class="sc"><thead><tr><th style="text-align:left">Senaryo</th><th>Adet</th><th>Ciro</th><th>Brüt kâr</th><th>Marj</th></tr></thead><tbody>${rows}</tbody></table></div>
+      </div><div>
+        <div class="box"><h3>Uygulanan kurallar</h3>${rulesHtml}</div>
+      </div></div>`;
+  }
+  let drw = null;
+  function openDrawer(id, mode){
+    if (drw && drw.id === id && drw.mode === mode){ closeDrawer(); return; }
+    drw = {id, mode}; renderDrawer(); markSel();
+  }
+  function closeDrawer(){ drw = null; $('drawer').hidden = true; markSel(); }
+  function renderDrawer(){
+    if (!drw) return;
+    const p = P.find(x => x.id === drw.id), W = campW(), r = recommend(p, drw.mode, W);
+    if (r.none){ closeDrawer(); return; }
+    $('dt').textContent = p.n;
+    $('dsub').textContent = drw.mode === 'camp' ? `Kampanya önerisi · ${W.toLocaleString('tr-TR', {maximumFractionDigits: 1})} hafta` : 'Fiyat güncelleme önerisi';
+    $('dbody').innerHTML = `<div class="dsum"><div><small>Güncel</small><b>${TL(p.p)}</b></div><div>→</div><div><small>Önerilen</small><b class="pos">${TL(r.price)}</b></div>
+      <div><small>Beklenen etki</small><b class="${r.delta >= 0 ? 'pos' : 'neg'}">${sg(r.delta)}</b><small>${drw.mode === 'camp' ? 'kampanya toplamı' : 'haftalık'}</small></div>${drw.mode === 'camp' ? `<div><small>Planlanan adet (AI)</small><b>${fmt(Math.round(r.qty))}</b><small>stok ${fmt(p.s)}</small></div>` : ''}</div>` + detailHtml(p, drw.mode, r);
+    $('dapply').textContent = r.noDisc ? 'İndirim önerilmiyor' : 'Öneriyi uygula'; $('dapply').disabled = !!r.noDisc;
+    $('drawer').hidden = false;
+  }
+  const refreshDrawer = () => { if (drw) renderDrawer(); };
+  function markSel(){
+    document.querySelectorAll('tr.sel').forEach(t => t.classList.remove('sel'));
+    if (!drw) return;
+    const tr = (drw.mode === 'camp' ? $('cbody') : $('pbody')).querySelector(`tr[data-id="${drw.id}"]`); if (tr) tr.classList.add('sel');
+  }
+  $('dclose').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+  $('dapply').addEventListener('click', () => {
+    if (!drw) return; const id = drw.id, mode = drw.mode, p = P.find(x => x.id === id), r = recommend(p, mode, campW()); if (r.none || r.noDisc) return;
+    const tr = (mode === 'camp' ? $('cbody') : $('pbody')).querySelector(`tr[data-id="${id}"]`); if (!tr) return;
+    if (mode === 'camp'){ tr.querySelector('.pi').value = r.price; tr.querySelector('.qi').value = Math.round(r.qty); updC(); }
+    else { tr.querySelector('input').value = r.price; updP(tr); }
+    $('dapply').textContent = mode === 'camp' ? '✓ Kampanya satırına yazıldı' : '✓ Yazıldı, Güncelle ile onayla';
+  });
+  const chgHtml = (r, p) => { const c = r.price / p.p - 1; return `<small class="${r.delta >= 0 ? 'pos' : 'neg'}">${c >= 0 ? '+' : '−'}${pct(Math.abs(c))} · ${sg(r.delta)}${$('v2').hidden ? '/hf' : ' kampanya'}</small>`; };
+
+  /* ================= ÜRÜNLER ================= */
+  function listP(){
+    const q = $('pq').value.toLowerCase(), c = $('pc').value, b = $('pb').value, w = $('pw').checked;
+    const rows = P.filter(p => (!c || p.k === c) && (!b || p.b === b) && (!q || p.n.toLowerCase().includes(q)) && (!w || (p.p - p.c) / p.p < tgt(p.k)));
+    $('pbody').innerHTML = rows.map(p => `<tr data-id="${p.id}"><td>${p.n}<small>${p.b} · ${p.k}</small></td><td>${TL(p.c)}</td><td class="rk"></td><td>${stk(p)}</td>
+      <td><input type="number" value="${p.p}" min="0" aria-label="${p.n} güncel fiyat"></td><td class="ai"></td><td class="m"></td><td class="st"></td><td><button class="upd">Güncelle</button><small class="sn"></small></td></tr>`).join('')
+      || '<tr><td colspan="9" class="empty">Bu filtreyle ürün yok.</td></tr>';
+    document.querySelectorAll('#pbody tr[data-id]').forEach(updP); aiSummary();
+  }
+  function aiCellP(tr){
+    const p = find(tr), r = recommend(p, 'price'), td = tr.querySelector('.ai');
+    td.innerHTML = r.none ? `<span class="badge b-n">${r.none}</span>`
+      : `<span class="rec">${TL(r.price)}</span>${chgHtml(r, p)}<button class="lk aia" data-p="${r.price}">Uygula</button> · <button class="lk why">Neden?</button> <span class="badge ${confCls(p.conf)}">${p.conf}</span>`;
+  }
+  function updP(tr){
+    const p = find(tr), v = +tr.querySelector('input').value || 0, m = v > 0 ? (v - p.c) / v : 0;
+    tr.querySelector('.rk').innerHTML = rk(p, v);
+    const mc = tr.querySelector('.m'); mc.innerHTML = pct(m) + '<small>Hedef ' + pct(tgt(p.k), 0) + '</small>'; mc.className = 'm ' + (m >= tgt(p.k) ? 'pos' : 'neg');
+    tr.querySelector('.st').innerHTML = state(m, p.c, p.k);
+    tr.querySelector('.upd').disabled = v === p.p; aiCellP(tr);
+  }
+  function aiSummary(){
+    let n = 0, eff = 0, hn = 0;
+    document.querySelectorAll('#pbody tr[data-id]').forEach(tr => { const p = find(tr), r = recommend(p, 'price');
+      if (!r.none && r.price !== p.p){ n++; eff += r.delta; if (p.conf === 'Yüksek' && Math.abs(r.price / p.p - 1) <= .1) hn++; } });
+    $('psum').innerHTML = `<b>AI önerileri:</b> ${n} ürün · beklenen etki <b class="${eff >= 0 ? 'pos' : 'neg'}">${sg(eff)}/hf</b>`;
+    markSel(); $('pbulk').disabled = hn === 0; $('pbulk').textContent = `Yüksek güvenli önerileri uygula ve güncelle (${hn})`;
+  }
+  $('pbody').addEventListener('input', e => { const tr = e.target.closest('tr[data-id]'); if (tr) updP(tr); });
+  $('pbody').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+    const a = e.target.closest('.ap, .aia'); if (a){ tr.querySelector('input').value = a.dataset.p; updP(tr); return; }
+    if (e.target.closest('.why')){ openDrawer(find(tr).id, 'price'); return; }
+    const u = e.target.closest('.upd');
+    if (u){ find(tr).p = +tr.querySelector('input').value; updP(tr); aiSummary(); refreshDrawer();
+      u.textContent = '✓ Güncellendi'; tr.querySelector('.sn').textContent = 'Mağazada en geç ' + fDT(new Date(Date.now() + H48)); setTimeout(() => { u.textContent = 'Güncelle'; }, 1500); }
+  });
+  $('pbulk').addEventListener('click', () => {
+    let n = 0;
+    P.forEach(p => { const r = recommend(p, 'price'); if (!r.none && r.price !== p.p && p.conf === 'Yüksek' && Math.abs(r.price / p.p - 1) <= .1){ p.p = r.price; n++; } });
+    listP(); $('pbn').textContent = `✓ ${n} ürünün fiyatı güncellendi · mağazada en geç ${fDT(new Date(Date.now() + H48))}`;
+  });
+  $('pc').addEventListener('input', () => fillBrands('pb', $('pc').value));
+  ['pq','pc','pb','pw'].forEach(id => $(id).addEventListener('input', listP));
+
+  /* ================= KAMPANYA ================= */
+  const C = {}, added = new Set(), scopeIds = new Set(), pickIds = new Set(); let listed = false, scopeListed = false;
+  const cd = p => C[p.id] || (C[p.id] = {price: null, qty: null});
+  function listC(){
+    const items = P.filter(p => added.has(p.id));
+    $('cbody').innerHTML = items.length === 0
+      ? `<tr><td colspan="11" class="empty">${listed ? 'Bu seçimle ürün bulunamadı.' : 'Kampanya kapsamını belirle; ürünler burada listelenir.'}</td></tr>`
+      : items.map(p => { const d = cd(p); return `<tr data-id="${p.id}"><td>${p.n}<small>${p.b} · Stok ${fmt(p.s)}</small></td><td>${TL(p.c)}</td><td>${TL(p.p)}</td><td class="rk"></td><td class="ai"></td>
+        <td><input class="pi" type="number" value="${d.price ?? ''}" placeholder="Fiyat gir" min="0" aria-label="${p.n} kampanya fiyatı"><small class="dc"></small></td>
+        <td><input class="qi" type="number" value="${d.qty ?? ''}" placeholder="Planlanan adet" min="0" aria-label="${p.n} adet"><small class="eq"></small></td>
+        <td class="m"></td><td class="g"></td><td class="st"></td><td><button class="rm" title="Kampanyadan hariç tut" aria-label="${p.n} kampanyadan hariç tut">✕</button></td></tr>`; }).join('');
+    updC(); renderT();
+  }
+  function aiVals(p, W){
+    const r = recommend(p, 'camp', W); if (r.none) return null;
+    if (r.noDisc) return {price: Math.floor(p.p), qty: Math.round(M(p, 'camp', W).qty(p.p)), keep: true};
+    return {price: r.price, qty: Math.round(r.qty)};
+  }
+  const aiSame = p => { const d = cd(p); return d.price === d.aiP && d.qty === d.aiQ; };
+  function aiCellC(tr){
+    const p = find(tr), r = recommend(p, 'camp', campW()), td = tr.querySelector('.ai'), v = r.none ? null : aiVals(p, campW());
+    const apply = v ? `<button class="lk aic" data-p="${v.price}" data-q="${v.qty}">Uygula</button>${aiSame(p) ? ' <span class="ok-tag">✓ girili</span>' : ''}`
+      : '<button class="lk aic-off" disabled title="Bu ürün için öneri yok">Uygula</button>';
+    td.innerHTML = r.none ? `<span class="badge b-n">${r.none}</span><span>${apply}</span>`
+      : r.noDisc ? `<span class="badge b-warn">İndirim önerilmez</span><small>indirim brüt kârı artırmıyor</small><span>${apply} · <button class="lk why">Neden?</button></span>`
+      : `<span class="rec">${TL(r.price)}</span>${chgHtml(r, p)}<small>tahmini ~${fmt(Math.round(r.qty))} adet</small><span>${apply} · <button class="lk why">Neden?</button> <span class="badge ${confCls(p.conf)}">${p.conf}</span></span>`;
+  }
+  function updC(){
+    let profit = 0, rev = 0, low = 0, n = 0, c = 0, rows = 0, tw = 0; const W = campW();
+    $('cnote').textContent = 'Fiyat ve planlanan adet AI önerisiyle dolu gelir (adet, stokla sınırlıdır). İstediğini değiştir, satırdaki "Uygula" ile öneriye dön; "Kampanyayı kaydet" ile onayla.' + (weeksOf() ? '' : ' Tarih girilmediği için 1 haftalık kampanya varsayıldı.');
+    document.querySelectorAll('#cbody tr[data-id]').forEach(tr => {
+      const p = find(tr), d = cd(p), ai = aiVals(p, W);
+      if (ai){   /* AI önerisi girili gelir; kullanıcı dokunmadığı sürece (tarih vb. değişince) güncel kalır */
+        const pi = tr.querySelector('.pi'), qi = tr.querySelector('.qi');
+        if (d.aiP === undefined || pi.value === String(d.aiP)){ pi.value = ai.price; d.aiP = ai.price; }
+        if (d.aiQ === undefined || qi.value === String(d.aiQ)){ qi.value = ai.qty; d.aiQ = ai.qty; }
+      }
+      const rawP = tr.querySelector('.pi').value, rawQ = tr.querySelector('.qi').value;
+      d.price = rawP === '' ? null : (+rawP || 0); d.qty = rawQ === '' ? null : (+rawQ || 0); rows++; aiCellC(tr);
+      const dc = tr.querySelector('.dc'), mc = tr.querySelector('.m'), g = tr.querySelector('td.g'), st = tr.querySelector('.st'), eq = tr.querySelector('.eq');
+      if (d.price === null){
+        tr.querySelector('.rk').innerHTML = `${TL(p.rmin)} – ${TL(p.rmax)}`;
+        dc.textContent = ''; eq.textContent = ''; mc.textContent = '—'; mc.className = 'm'; g.textContent = '—';
+        st.innerHTML = '<span class="badge">Fiyat gir</span>'; return;
+      }
+      const up = d.price - p.c, m = d.price > 0 ? up / d.price : 0; n++; if (m < tgt(p.k)) low++;
+      tr.querySelector('.rk').innerHTML = rk(p, d.price);
+      dc.textContent = (d.price === d.aiP ? 'AI önerisi · ' : 'Elle girildi · ') + (d.price < p.p ? 'Fiyat −' + pct(1 - d.price / p.p, 0) : d.price > p.p ? 'Fiyat +' + pct(d.price / p.p - 1, 0) : 'Fiyat değişmedi');
+      const eqq = Math.round(M(p, 'camp', W).qty(d.price));
+      eq.innerHTML = d.qty === d.aiQ && d.price === d.aiP ? 'AI tahmini' : `Bu fiyata tahmin ~${fmt(eqq)} · <button class="lk fq" data-q="${eqq}">Yaz</button>`;
+      mc.innerHTML = pct(m) + '<small>Hedef ' + pct(tgt(p.k), 0) + '</small>'; mc.className = 'm ' + (m >= tgt(p.k) ? 'pos' : 'neg');
+      if (d.qty === null) g.textContent = '—'; else { g.textContent = TL(up * d.qty); profit += up * d.qty; rev += d.price * d.qty; tw += tgt(p.k) * d.price * d.qty; c++; }
+      st.innerHTML = state(m, p.c, p.k) + (d.qty === null ? '<span class="fix w">Brüt kâr (₺) için planlanan adedi gir</span>' : d.qty > p.s ? `<span class="fix w">Adet stoktan fazla (stok ${fmt(p.s)})</span>` : '');
+    });
+    $('save').disabled = n === 0; $('saved').hidden = true; markSel();
+    const avg = rev > 0 ? profit / rev : 0, tAvg = rev > 0 ? tw / rev : 0, ok = avg >= tAvg, vd = $('verdict');
+    vd.hidden = rows === 0; $('sum').hidden = c === 0; $('bulkbar').hidden = rows === 0;
+    if (c === 0){
+      vd.className = 'verdict hint';
+      vd.innerHTML = n === 0 ? '<b>Kampanya fiyatlarını girmeye başla</b><span>AI önerisi fiyat ve adet alanlarına girili gelir; değiştirebilir ya da olduğu gibi onaylayabilirsin.</span>'
+        : '<b>Planlanan adetleri gir</b><span>Kampanya toplamı, fiyat ve adet girildikçe hesaplanır. "Tahmini" yanındaki Yaz ile model tahminini kullanabilirsin.</span>';
+      refreshDrawer(); return;
+    }
+    vd.className = 'verdict ' + (ok ? 'ok' : 'warn');
+    vd.innerHTML = ok ? `<b>Kampanya hedefte</b><span>${low ? low + ' ürün tek başına hedefin altında, ama kampanya toplamı hedefi tutturuyor.' : 'Hesaplanan tüm ürünler hedefin üzerinde.'}</span>`
+      : `<b>Kampanya hedefin altında</b><span>Ortalama brüt kâr marjı ${pct(avg)} (hedef ${pct(tAvg, 1)}). ${low} üründe brüt kâr marjı hedefin altında.</span>`;
+    $('sum').innerHTML = `<div class="kpi"><small>Ortalama brüt kâr marjı (%)</small><b>${pct(avg)}</b><small>Hedef ${pct(tAvg, 1)} (kategori hedeflerinin ağırlıklı ortalaması)</small></div>
+      <div class="kpi"><small>Toplam brüt kâr (₺)</small><b>${TL(profit)}</b><small>Ciro ${TL(rev)}</small></div>
+      <div class="kpi"><small>Dikkat gereken ürün</small><b>${low} / ${n}</b><small>${c < rows ? (rows - c) + ' ürün toplama dahil değil (fiyat ya da adet eksik)' : 'Hedefin altında'}</small></div>`;
+    refreshDrawer();
+  }
+  $('cbody').addEventListener('input', updC);
+  $('cbody').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+    const a = e.target.closest('.ap'); if (a){ tr.querySelector('.pi').value = a.dataset.p; updC(); return; }
+    const ai = e.target.closest('.aic'); if (ai){ const q = find(tr), dd = cd(q); tr.querySelector('.pi').value = dd.aiP = +ai.dataset.p; tr.querySelector('.qi').value = dd.aiQ = +ai.dataset.q; updC();
+      const nb = tr.querySelector('.aic'); if (nb){ nb.textContent = '✓ Uygulandı'; setTimeout(() => { if (nb.isConnected) nb.textContent = 'Uygula'; }, 1400); } return; }
+    const fq = e.target.closest('.fq'); if (fq){ tr.querySelector('.qi').value = fq.dataset.q; updC(); return; }
+    if (e.target.closest('.why')){ openDrawer(find(tr).id, 'camp'); return; }
+    if (e.target.closest('.rm')){ const id = find(tr).id; scopeIds.delete(id); pickIds.delete(id); added.delete(id); listC(); sug(); }
+  });
+  $('bulk').addEventListener('click', () => { const k = +$('bd').value || 0;
+    document.querySelectorAll('#cbody tr[data-id]').forEach(tr => { tr.querySelector('.pi').value = Math.round(find(tr).p * (1 - k / 100)); }); updC(); });
+  $('fixall').addEventListener('click', () => {
+    document.querySelectorAll('#cbody tr[data-id]').forEach(tr => { const i = tr.querySelector('.pi'); if (i.value !== '') i.value = Math.max(+i.value, minP(find(tr).c, find(tr).k)); }); updC(); });
+
+  /* kapsam seçimi */
+  function rebuildAdded(){ added.clear(); scopeIds.forEach(id => added.add(id)); pickIds.forEach(id => added.add(id)); }
+  function setMsg(t, cls){ const h = $('hint'); h.textContent = t; h.className = cls; h.hidden = !t; }
+  function listScope(manual){
+    const c = $('cc').value, b = $('cb').value;
+    if (!c && !b){
+      if (manual){ setMsg('Kategori ya da marka seç.', 'neg'); return; }
+      setMsg('', ''); scopeIds.clear(); rebuildAdded(); listC(); return;
+    }
+    listed = scopeListed = true;
+    scopeIds.clear(); P.filter(p => (!c || p.k === c) && (!b || p.b === b)).forEach(p => scopeIds.add(p.id));
+    setMsg(scopeIds.size ? `✓ ${scopeIds.size} ürün listelendi` : 'Bu seçimle ürün bulunamadı.', scopeIds.size ? 'pos' : 'neg');
+    rebuildAdded(); listC();
+    if (manual) ($('tpanel').hidden ? $('cbody').closest('.tbl') : $('tpanel')).scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+  $('cc').addEventListener('input', () => { fillBrands('cb', $('cc').value); if (scopeListed) listScope(false); else renderT(); });
+  $('cb').addEventListener('input', () => { if (scopeListed) listScope(false); });
+  $('list').addEventListener('click', () => listScope(true));
+  document.querySelectorAll('input[name=sc]').forEach(r => r.addEventListener('change', () => {
+    const v = document.querySelector('input[name=sc]:checked').value; $('sbk').hidden = v !== 'bk'; $('sup').hidden = v !== 'up'; }));
+  function sug(){
+    const q = $('cq').value.trim().toLowerCase(), box = $('sug');
+    if (!q){ box.innerHTML = ''; return; }
+    const m = P.filter(p => p.n.toLowerCase().includes(q)).slice(0, 6);
+    box.innerHTML = m.length ? m.map(p => `<div><span>${p.n}<small>${p.b} · ${p.k}</small></span>${added.has(p.id) ? '<span class="pos">✓ Eklendi</span>' : `<button class="sec add" data-id="${p.id}">+ Ekle</button>`}</div>`).join('') : '<div>Bu adla ürün bulunamadı.</div>';
+  }
+  $('cq').addEventListener('input', sug);
+  $('sug').addEventListener('click', e => { const b = e.target.closest('.add'); if (!b) return; pickIds.add(+b.dataset.id); added.add(+b.dataset.id); listed = true; listC(); sug(); });
+
+  /* kategori hedefleri */
+  function renderT(){
+    const cats = [...new Set(P.filter(p => added.has(p.id)).map(p => p.k).concat($('cc').value ? [$('cc').value] : []))];
+    $('tpanel').hidden = cats.length === 0;
+    $('tchips').innerHTML = cats.map(k => `<label class="tc">${k}<input type="number" data-k="${k}" value="${TARGETS[k]}" min="0" max="95"> %</label>`).join('');
+  }
+  function refreshAll(){
+    document.querySelectorAll('#pbody tr[data-id]').forEach(updP); aiSummary(); refreshDrawer(); updC();
+  }
+  $('tchips').addEventListener('input', e => { const i = e.target.closest('input[data-k]'); if (!i) return; TARGETS[i.dataset.k] = +i.value || 0; refreshAll(); });
+  ['r-chg','r-camp','r-st','r-rk','r-tol'].forEach(id => $(id).addEventListener('input', refreshAll));
+  document.querySelectorAll('input[name=obj]').forEach(r => r.addEventListener('change', () => {
+    const k = R.keep(); $('tolw').hidden = !k;
+    $('goalh2').textContent = k ? 'AI marjı mevcut seviyenin yakınında tutar (kategori hedefinin altına da inmez). Daha az indirim önerir, yönetici gerekirse artırır.' : 'AI toplam brüt kârı (₺) artırmaya çalışır. Marj düşebilir ama kategori hedefinin altına inmez.';
+    refreshAll(); }));
+
+  /* yayın takvimi: mağaza etiketleri 48 saat */
+  const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  function earliestStart(){ const t = new Date(Date.now() + H48); if (t.getHours() || t.getMinutes() || t.getSeconds() || t.getMilliseconds()){ t.setDate(t.getDate() + 1); t.setHours(0, 0, 0, 0); } return t; }
+  function storeInfo(){
+    const a = $('d1').value, b = $('d2').value; if (!a || !b) return null;
+    const start = new Date(a + 'T00:00:00'), end = new Date(b + 'T00:00:00'), earliest = earliestStart(), ok = start >= earliest;
+    return {start, end, earliest, ok, storeStart: ok ? start : earliest};
+  }
+  function renderCal(){
+    const i = storeInfo(), el = $('cal'); $('saved').hidden = true;
+    if (!i){ el.innerHTML = '<div class="hint2">Başlangıç ve bitiş tarihini seç; mağaza etiketleri için gereken süre burada görünür (fiyat değişikliği mağazaya 48 saatte yansır). Tarihler AI önerisinin süre varsayımını da belirler.</div>'; return; }
+    const store = i.ok ? `<span class="pos">✓ Yetişir · fiyat kaydı için son zaman ${fDT(new Date(i.start - H48))}</span>`
+      : `<span><span class="neg">⚠ Süre yetmiyor · mağazada en erken ${fD(i.earliest)} başlar.</span> <button class="ap" id="shift">Başlangıcı ${fD(i.earliest)} yap</button></span>`;
+    el.innerHTML = `<div class="scopeh">Yayın takvimi</div>
+      <div class="calr"><span>Online (e-ticaret)</span><b>${fD(i.start)}</b><span class="pos">✓ Anında yansır</span></div>
+      <div class="calr"><span>Mağaza etiketleri</span><b>${fD(i.storeStart)}</b>${store}</div>
+      <div class="calr"><span>Bitiş ve eski fiyata dönüş</span><b>${fD(i.end)}</b><span class="sub">Eski fiyat da mağazaya 48 saatte yansır; dönüş bu kayıtla birlikte planlanır.</span></div>
+      <div class="hint2">Mağaza etiketleri fiyat değişikliğini 48 saatte yansıtır. Kampanya gün başında (00:00) başlar kabul edilir.</div>`;
+  }
+  $('cal').addEventListener('click', e => {
+    if (e.target.id !== 'shift') return;
+    const i = storeInfo(), len = Math.max(0, Math.round((i.end - i.start) / 864e5)), ne = new Date(i.earliest); ne.setDate(ne.getDate() + len);
+    $('d1').value = ymd(i.earliest); $('d2').value = ymd(ne); renderCal(); updC();
+  });
+  ['d1', 'd2'].forEach(id => $(id).addEventListener('input', () => { renderCal(); updC(); }));
+  $('save').addEventListener('click', () => {
+    const sv = $('saved'), name = $('cn').value.trim(), a = $('d1').value, b = $('d2').value; sv.hidden = false;
+    if (!name || !a || !b || b < a){ sv.className = 'neg'; sv.textContent = !name ? 'Kampanya adını yaz.' : 'Tarih aralığını kontrol et.'; return; }
+    const i = storeInfo();
+    sv.className = 'pos'; sv.textContent = `✓ "${name}" kaydedildi · ${document.querySelectorAll('#cbody tr[data-id]').length} ürün · ` + (i.ok ? `online ve mağazada ${fD(i.start)}'te başlar` : `online ${fD(i.start)}, mağazada en erken ${fD(i.storeStart)}'te başlar`);
+  });
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+    ['v1','v2'].forEach(id => { $(id).hidden = id !== b.dataset.v; });
+    closeDrawer(); if (b.dataset.v === 'v2') updC(); else listP();
+  }));
+  renderCal(); listP(); listC();
+</script>
+</body>
+</html>
